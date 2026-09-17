@@ -1,59 +1,83 @@
 const UsuarioRepository = require('../repositories/UsuarioRepository');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-
-// A chave secreta idealmente deve vir do .env
-const JWT_SECRET = process.env.JWT_SECRET || 'chave_super_secreta_sabor_digital_123';
+const fs = require('fs').promises;
+const path = require('path');
 
 class UsuarioService {
-    async registrarUsuario(dados) {
-        const { nome, email, senha, papel } = dados;
-
-        if (!nome || !email || !senha) {
-            throw { status: 400, mensagem: "Nome, e-mail e senha são obrigatórios" };
+    async listarUsuarios() {
+        const usuarios = await UsuarioRepository.findAll();
+        const usuariosFormatados = usuarios.map(p => ({
+            ...p,
+            imagem: p.imagem ? `/public/${p.imagem}` : null
+        }));
+        return {
+            sucesso: true,
+            dados: usuariosFormatados,
+            total: usuariosFormatados.length
+        };
+    }
+    
+    async buscarUsuarioPorId(id) {
+        if (!id || isNaN(id)) {
+            throw { status: 400, mensagem: "ID inválido" };
         }
 
-        // Verifica se o email já existe
-        const usuarioExistente = await UsuarioRepository.findByEmail(email);
-        if (usuarioExistente) {
-            throw { status: 409, mensagem: "E-mail já está em uso" };
+        const usuario = await ProdutoRepository.findById(id);
+        if (!usuario) {
+            throw { status: 404, mensagem: "Usuário não encontrado" };
         }
-
-        // Criptografar a senha
-        const salt = await bcrypt.genSalt(10);
-        const senhaHash = await bcrypt.hash(senha, salt);
-
-        // Define o papel (se não for admin, por padrão é cliente)
-        const role = (papel === 'admin') ? 'admin' : 'cliente';
-
-        const novoId = await UsuarioRepository.create({
-            nome,
-            email,
-            senha: senhaHash,
-            papel: role
-        });
 
         return {
             sucesso: true,
-            mensagem: "Usuário registrado com sucesso",
-            id: novoId
+            dados: {
+                ...usuario,
+                imagem: usuario.imagem ? `/public/${produto.imagem}` : null
+            }
         };
     }
 
-    async login(email, senha) {
-        if (!email || !senha) {
-            throw { status: 400, mensagem: "E-mail e senha são obrigatórios" };
+    async cadastrarUsuario(dados) {
+        let { nome, email, senha, papel } = dados;
+
+        if (!nome || !email || senha === undefined) {
+            throw { status: 400, mensagem: "Nome, email e senha são obrigatórios e devem ser válidos" };
         }
 
-        const usuario = await UsuarioRepository.findByEmail(email);
-        if (!usuario) {
-            throw { status: 401, mensagem: "Credenciais inválidas" };
+        const novoUsuario = {
+            nome: nome.trim(),
+            email: descricao.trim(),
+            senha: senha,
+            papel: papel.trim()
+        };
+
+        const id = await UsuarioRepository.create(novoProduto);
+
+        return {
+            sucesso: true,
+            mensagem: "Usuário cadastrado com sucesso",
+            id
+        };
+    }
+
+    async atualizarUsuario(id, dados) {
+        if (!id || isNaN(id)) {
+            throw { status: 400, mensagem: "ID inválido" };
         }
 
-        // Validar a senha
-        const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
-        if (!senhaCorreta) {
-            throw { status: 401, mensagem: "Credenciais inválidas" };
+        const existe = await UsuarioRepository.findById(id);
+        if (!existe) {
+            throw { status: 404, mensagem: "Usuário não encontrado" };
+        }
+
+        const atualizado = {};
+        let { nome, email, senha, papel } = dados;
+
+        if (nome !== undefined) atualizado.nome = nome.trim();
+        if (email !== undefined) atualizado.descricao = descricao.trim();
+        if (senha !== undefined) atualizado.preco = preco;
+        if (papel !== undefined) atualizado.categoria = categoria;
+
+        if (Object.keys(atualizado).length === 0) {
+            throw { status: 400, mensagem: "Nenhum dado válido enviado para atualização" };
         }
 
         // Gerar o JWT
@@ -65,16 +89,36 @@ class UsuarioService {
 
         return {
             sucesso: true,
-            mensagem: "Login realizado com sucesso",
-            token,
-            usuario: {
-                id: usuario.id,
-                nome: usuario.nome,
-                email: usuario.email,
-                papel: usuario.papel
+            mensagem: "Usuário atualizado com sucesso"
+        };
+    }
+
+    async deletarUsuario(id) {
+        if (!id || isNaN(id)) {
+            throw { status: 400, mensagem: "ID inválido" };
+        }
+
+        const existe = await UsuarioRepository.findById(id);
+        if (!existe) {
+            throw { status: 404, mensagem: "Usuário não encontrado" };
+        }
+
+        if (existe.imagem) {
+            const caminho = path.join(__dirname, '..', '..', 'public', existe.imagem);
+            try {
+                await fs.unlink(caminho);
+            } catch (err) {
+                console.error("Erro ao apagar imagem no deletar:", err);
             }
+        }
+
+        await ProdutoRepository.delete(id);
+
+        return {
+            sucesso: true,
+            mensagem: "Produto apagado com sucesso"
         };
     }
 }
 
-module.exports = new UsuarioService();
+module.exports = new ProdutoService();

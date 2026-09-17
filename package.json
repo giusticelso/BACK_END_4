@@ -1,7 +1,7 @@
 {
   "name": "somativa",
   "version": "1.0.0",
-  "description": "",
+  "description": "API Backend construída em Node.js com padrão de arquitetura MVC (Model-View-Controller) e banco de dados MySQL para o sistema de gestão da \"Sabor Digital\" (Cardápios, Pedidos, Produtos).",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
